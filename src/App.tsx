@@ -6,6 +6,7 @@ import './App.css';
 
 function App() {
   const [datas, setDatas] = useState<MockData[]>([]);
+  const [totalPrice, setTotalPrice] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const observer = useRef<IntersectionObserver | null>(null);
   const scrollEndRef = useRef<HTMLDivElement | null>(null);
@@ -27,7 +28,14 @@ function App() {
     setIsLoading(true);
     try {
       const { datas, isEnd } = await getMockData(pageNum.current);
+      let currentTotalPrice = 0;
+
+      datas.forEach(({ price }: MockData) => {
+        currentTotalPrice += price;
+      });
+
       setDatas((prevDatas) => [...prevDatas, ...datas]);
+      setTotalPrice((prevTotalPrice) => prevTotalPrice + currentTotalPrice);
       setIsEnd(isEnd);
       pageNum.current += 1;
     } catch (error) {
@@ -65,6 +73,7 @@ function App() {
 
   return (
     <main className='App'>
+      <p className='total-price'>Total Price: {totalPrice}</p>
       <div className='data-list'>
         {datas.map((data: MockData) => (
           <DataCard
