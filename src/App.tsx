@@ -1,25 +1,85 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useEffect, useRef, useState } from 'react';
+import DataCard from './components/DataCard';
+import getMockData from './lib/getMockData';
+import type { MockData } from './types/mock';
 import './App.css';
 
 function App() {
+  const [datas, setDatas] = useState<MockData[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const scrollEndRef = useRef<HTMLDivElement | null>(null);
+  const [isEnd, setIsEnd] = useState<boolean>(false);
+  const pageNum = useRef<number>(0);
+
+  const createObserver = (target: HTMLDivElement) => {
+    const options = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.1,
+    };
+
+    observer.current = new IntersectionObserver(handleIntersect, options);
+    observer.current.observe(target);
+  };
+
+  const fetchMockData = async () => {
+    setIsLoading(true);
+    try {
+      const { datas, isEnd } = await getMockData(pageNum.current);
+      setDatas((prevDatas) => [...prevDatas, ...datas]);
+      setIsEnd(isEnd);
+      pageNum.current += 1;
+    } catch (error) {
+      console.error({ error });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIntersect = (entries: IntersectionObserverEntry[]) => {
+    if (isLoading) return;
+    entries.forEach((entry) => {
+      if (entry.isIntersecting && !isEnd) {
+        fetchMockData();
+      }
+    });
+  };
+
+  useEffect(() => {
+    const target = scrollEndRef.current;
+
+    if (!target) return;
+
+    if (isEnd) {
+      observer.current?.unobserve(target);
+    } else {
+      createObserver(target);
+    }
+
+    return () => {
+      if (!target) return;
+      observer.current?.disconnect();
+    };
+  }, [isEnd]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <main className='App'>
+      <div className='data-list'>
+        {datas.map((data: MockData) => (
+          <DataCard
+            data={data}
+            key={`product-${data.productId}`}
+          ></DataCard>
+        ))}
+      </div>
+      <div
+        className='scroll-end'
+        ref={scrollEndRef}
+      >
+        {isLoading && <span className='loading'>Loading...</span>}
+      </div>
+    </main>
   );
 }
 
